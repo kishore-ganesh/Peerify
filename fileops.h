@@ -1,7 +1,9 @@
 #define pieceSize 128000
-#include<cstddef>
-#include<stdio.h>
-#include<math.h>
+#include <cstddef>
+#include <stdio.h>
+#include <math.h>
+#include<vector>
+using namespace std;
 struct file_header
 {
 
@@ -19,5 +21,4 @@ size_t findSizeOfFile(FILE *fp);
 size_t copy_into_buffer(FILE *fp, char **bufp, int index);
 struct file_section *split_file_into_sections(FILE *fp, size_t size);
 bool compare_sections(struct file_section a, struct file_section b);
-void reconstruct_from_sections(struct file_section* sections, size_t size, int numberOfPieces);
-
+void reconstruct_from_sections(vector<file_section> sections, int numberOfPieces);
