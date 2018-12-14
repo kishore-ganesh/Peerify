@@ -22,3 +22,4 @@ size_t copy_into_buffer(FILE *fp, char **bufp, int index);
 struct file_section *split_file_into_sections(FILE *fp, size_t size);
 bool compare_sections(struct file_section a, struct file_section b);
 void reconstruct_from_sections(vector<file_section> sections, int numberOfPieces);
+int findNumberOfPieces(FILE* fp);

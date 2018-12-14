@@ -33,7 +33,7 @@ struct file_section *split_file_into_sections(FILE *fp, size_t size)
     // size_t result=fread(buffer, size, 1, fp);
     struct file_section *file_sections;
     // if(result!=size){
-    int numberOfPieces = floor((size / pieceSize) + 1);
+    int numberOfPieces = findNumberOfPieces(fp);
     file_sections = (struct file_section *)malloc(numberOfPieces * sizeof(struct file_section));
     for (int i = 0; i < numberOfPieces; i++)
     {
@@ -64,6 +64,11 @@ void reconstruct_from_sections(vector<file_section> sections, int numberOfPieces
     {
         fwrite(sections[i].databuf, 1, sections[i].size_of_databuf, fp);
     }
+}
+
+int findNumberOfPieces(FILE* fp)
+{
+    return floor((findSizeOfFile(fp) / pieceSize) + 1);
 }
 
 // int main(){

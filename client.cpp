@@ -8,11 +8,10 @@
 #include <functional>
 
 std::mutex mtx;
-
-void background_listen(int port)
+//port default else override
+int setUpNetwork(int port)
 {
     int opt = 1;
-
     int socket_id = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_id < -1)
     {
@@ -23,10 +22,6 @@ void background_listen(int port)
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
-    FILE *fp = fopen("test1.jpg", "rb");
-    struct file_section *sections = split_file_into_sections(fp, findSizeOfFile(fp));
-    int numberOfPieces = floor((findSizeOfFile(fp) / pieceSize) + 1);
-    printf("NUMBER OF PIECES IS: %d\n", numberOfPieces);
     setsockopt(socket_id, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
     if (bind(socket_id, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
@@ -38,6 +33,17 @@ void background_listen(int port)
     {
         perror("LISTEN ERROR");
     };
+
+    return socket_id;
+}
+
+void listenLoop(int socket_id, int port)
+{
+    FILE *fp = fopen("test1.jpg", "rb");
+    struct file_section *sections = split_file_into_sections(fp, findSizeOfFile(fp));
+    int numberOfPieces = findNumberOfPieces(fp);
+    printf("NUMBER OF PIECES IS: %d\n", numberOfPieces);
+
     while (1)
     {
 
@@ -48,21 +54,21 @@ void background_listen(int port)
         int f; //temp, used to see which part to recieve, first six or last six
         // read(client_socket, &f, sizeof(f));
         printf("BEGINNING WRITE\n");
-        if (port==2012)
+        if (port == 2012)
         {
-            
-            int toWrite=numberOfPieces/2;
+
+            int toWrite = numberOfPieces / 2;
             write(client_socket, &toWrite, sizeof(int));
             for (int i = 0; i < numberOfPieces / 2; i++)
             {
-                
+
                 write(client_socket, &sections[i], sizeof(sections[i]));
                 write(client_socket, sections[i].databuf, sections[i].size_of_databuf);
             }
         }
         else
         {
-            int toWrite=numberOfPieces-numberOfPieces/2;
+            int toWrite = numberOfPieces - numberOfPieces / 2;
             write(client_socket, &toWrite, sizeof(int));
             for (int i = numberOfPieces / 2; i < numberOfPieces; i++)
             {
@@ -71,6 +77,13 @@ void background_listen(int port)
             }
         }
     }
+}
+
+void background_listen(int port)
+{
+
+    int socket_id = setUpNetwork(port);
+    listenLoop(socket_id, port);
 }
 
 int connectToSocket(int socket, sockaddr_in address)
@@ -103,18 +116,35 @@ void recieve_section(sockaddr_in address, vector<file_section> &sections)
     //for now make it 6
 
     //get number of pieces from the clients first
-    int numberOfPieces=0;
+    int numberOfPieces = 0;
     read(socket_id, &numberOfPieces, sizeof(int));
     for (int i = 0; i < numberOfPieces; i++)
     {
         file_section section;
         read(socket_id, &section, sizeof(section));
-        section.databuf=(char*)malloc(section.size_of_databuf);
+        section.databuf = (char *)malloc(section.size_of_databuf);
         read(socket_id, section.databuf, section.size_of_databuf);
         sections.push_back(section);
     }
 
     mtx.unlock();
+}
+
+int sendHandshake(int socket_id, int id, int port)
+{
+    Handshake handshake;
+    handshake.id = id;
+    handshake.port = port;
+    int written = write(socket_id, &handshake, sizeof(Handshake));
+    return written;
+}
+
+void sendFileInfo(int socket_id, int id, int file_id)
+{
+    FileInfo info;
+    info.user_id = id;
+    info.file_id = file_id;
+    write(socket_id, &info, sizeof(info));
 }
 //start background thread
 
@@ -161,11 +191,8 @@ int main()
         case 0:
         {
             // send handshake
+            sendHandshake(socket_id, id, port);
 
-            Handshake handshake;
-            handshake.id = id;
-            handshake.port = port;
-            int written = write(socket_id, &handshake, sizeof(Handshake));
             break;
         }
 
@@ -174,10 +201,7 @@ int main()
 
             int file_id;
             scanf("%d", &file_id);
-            FileInfo info;
-            info.user_id = id;
-            info.file_id = file_id;
-            write(socket_id, &info, sizeof(info));
+            sendFileInfo(socket_id, id, file_id);
             break;
             //send info of file
         }
