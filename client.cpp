@@ -14,7 +14,11 @@ void background_listen(int port)
     int opt = 1;
 
     int socket_id = socket(AF_INET, SOCK_STREAM, 0);
-    
+    if (socket_id < -1)
+    {
+        perror("SOCKET ERROR");
+    }
+
     struct sockaddr_in address;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_family = AF_INET;
@@ -23,8 +27,16 @@ void background_listen(int port)
     struct file_section *sections = split_file_into_sections(fp, findSizeOfFile(fp));
     int numberOfPieces = floor((findSizeOfFile(fp) / pieceSize) + 1);
     setsockopt(socket_id, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
-    bind(socket_id, (struct sockaddr *)&address, sizeof(address));
-    listen(socket_id, 10);
+    if (bind(socket_id, (struct sockaddr *)&address, sizeof(address)) < 0)
+    {
+        perror("BIND ERROR");
+    };
+
+    printf("BINDED\n");
+    if (listen(socket_id, 10) < 0)
+    {
+        perror("LISTEN ERROR");
+    };
     while (1)
     {
 
@@ -33,19 +45,27 @@ void background_listen(int port)
         int client_socket = accept(socket_id, (struct sockaddr *)&client_address, (socklen_t *)&len);
         printf("CONNECTED\n");
         int f; //temp, used to see which part to recieve, first six or last six
-        read(client_socket, &f, sizeof(f));
+        // read(client_socket, &f, sizeof(f));
+        scanf(" %d", &f);
         if (f == 0)
         {
+            
+            int toWrite=numberOfPieces/2;
+            write(client_socket, &toWrite, sizeof(int));
             for (int i = 0; i < numberOfPieces / 2; i++)
             {
                 write(client_socket, &sections[i], sizeof(sections[i]));
+                write(client_socket, sections[i].databuf, sections[i].size_of_databuf);
             }
         }
         else
         {
-            for (int i = numberOfPieces / 2 + 1; i < numberOfPieces; i++)
+            int toWrite=numberOfPieces-numberOfPieces/2;
+            write(client_socket, &toWrite, sizeof(int));
+            for (int i = numberOfPieces / 2; i < numberOfPieces; i++)
             {
                 write(client_socket, &sections[i], sizeof(sections[i]));
+                write(client_socket, sections[i].databuf, sections[i].size_of_databuf);
             }
         }
     }
@@ -73,10 +93,25 @@ void recieve_section(sockaddr_in address, vector<file_section> &sections)
 {
     mtx.lock();
     int socket_id = socket(AF_INET, SOCK_STREAM, 0);
-    if(connect(socket_id, (sockaddr *)&address, sizeof(address)));
-    file_section section;
-    read(socket_id, &section, sizeof(section));
-    sections.push_back(section);
+    if (connect(socket_id, (sockaddr *)&address, sizeof(address)) < 0)
+    {
+        perror("RECIEVE ERROR");
+    };
+
+    //for now make it 6
+
+    //get number of pieces from the clients first
+    int numberOfPieces=0;
+    read(socket_id, &numberOfPieces, sizeof(int));
+    for (int i = 0; i < numberOfPieces; i++)
+    {
+        file_section section;
+        read(socket_id, &section, sizeof(section));
+        section.databuf=(char*)malloc(section.size_of_databuf);
+        read(socket_id, section.databuf, section.size_of_databuf);
+        sections.push_back(section);
+    }
+
     mtx.unlock();
 }
 //start background thread
@@ -99,7 +134,7 @@ int main()
     {
         printf("PTON ERRRO\n");
     };
-    
+
     int socket_id;
     while (1)
     {
@@ -112,8 +147,6 @@ int main()
         }
 
         socket_id = socket(AF_INET, SOCK_STREAM, 0);
-        
-        
 
         if (connect(socket_id, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
         {
@@ -129,6 +162,7 @@ int main()
 
             Handshake handshake;
             handshake.id = id;
+            handshake.port = port;
             int written = write(socket_id, &handshake, sizeof(Handshake));
             break;
         }
@@ -160,6 +194,7 @@ int main()
             response.clients = readVector(socket_id);
             int ports[] = {2012, 2014};
             vector<thread> recieve_threads;
+            printf("%d", htons(response.clients[0].sin_port));
             // printf("%d\n", response.clients.size());
             for (int i = 0; i < response.clients.size(); i++)
             {

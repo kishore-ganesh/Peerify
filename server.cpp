@@ -88,6 +88,7 @@ int main()
             // printf("%d ", r);
             User user;
             user.address = client_address;
+            user.address.sin_port=htons(handshake.port);
             user.id = handshake.id;
             users.insert(make_pair(user.id, user));
             

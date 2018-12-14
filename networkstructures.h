@@ -20,6 +20,7 @@ struct User
 struct Handshake
 {
     int id;
+    int port;
 
 };
 
