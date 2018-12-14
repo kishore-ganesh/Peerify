@@ -26,6 +26,7 @@ void background_listen(int port)
     FILE *fp = fopen("test1.jpg", "rb");
     struct file_section *sections = split_file_into_sections(fp, findSizeOfFile(fp));
     int numberOfPieces = floor((findSizeOfFile(fp) / pieceSize) + 1);
+    printf("NUMBER OF PIECES IS: %d\n", numberOfPieces);
     setsockopt(socket_id, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
     if (bind(socket_id, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
@@ -46,14 +47,15 @@ void background_listen(int port)
         printf("CONNECTED\n");
         int f; //temp, used to see which part to recieve, first six or last six
         // read(client_socket, &f, sizeof(f));
-        scanf(" %d", &f);
-        if (f == 0)
+        printf("BEGINNING WRITE\n");
+        if (port==2012)
         {
             
             int toWrite=numberOfPieces/2;
             write(client_socket, &toWrite, sizeof(int));
             for (int i = 0; i < numberOfPieces / 2; i++)
             {
+                
                 write(client_socket, &sections[i], sizeof(sections[i]));
                 write(client_socket, sections[i].databuf, sections[i].size_of_databuf);
             }
