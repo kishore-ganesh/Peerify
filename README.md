@@ -1,7 +1,7 @@
 # Peerify
 A WIP implementation of a Peer to Peer File Sharing Network in C++i
 
-Currently: Not working
+Currently: Able to obtain clients which have file pieces, and able to connect to these clients over multiple threads to bring in the file pieces. However, there's a bug in which the last part of the image is not obtained. This is being investigated
 
 It is in a very early development stage. The aim is to create a Peer to Peer file sharing network that works on the following basis:
 
