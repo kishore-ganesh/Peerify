@@ -6,36 +6,11 @@
 #include <thread>
 #include <mutex>
 #include <functional>
+#include "networkops.h"
 
 std::mutex mtx;
 //port default else override
-int setUpNetwork(int port)
-{
-    int opt = 1;
-    int socket_id = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_id < -1)
-    {
-        perror("SOCKET ERROR");
-    }
 
-    struct sockaddr_in address;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_family = AF_INET;
-    address.sin_port = htons(port);
-    setsockopt(socket_id, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
-    if (bind(socket_id, (struct sockaddr *)&address, sizeof(address)) < 0)
-    {
-        perror("BIND ERROR");
-    };
-
-    printf("BINDED\n");
-    if (listen(socket_id, 10) < 0)
-    {
-        perror("LISTEN ERROR");
-    };
-
-    return socket_id;
-}
 
 void listenLoop(int socket_id, int port)
 {
@@ -86,9 +61,6 @@ void background_listen(int port)
     listenLoop(socket_id, port);
 }
 
-int connectToSocket(int socket, sockaddr_in address)
-{
-}
 
 // template<typename T>
 vector<sockaddr_in> readVector(int sock)
@@ -146,28 +118,39 @@ void sendFileInfo(int socket_id, int id, int file_id)
     info.file_id = file_id;
     write(socket_id, &info, sizeof(info));
 }
-//start background thread
 
-int main()
+void requestForFile(int socket_id, int id)
 {
+    vector<file_section> recieved;
 
-    // printf("%d\n", socket_id);
+    FileRequest request;
+    request.user_id = id;
+    request.file_id = 1;
+    int w = write(socket_id, &request, sizeof(request));
 
-    int port;
-    int id;
-    scanf("%d", &port);
-    scanf("%d", &id);
-    std::thread background(background_listen, port); //what sort of call is this?
-
-    struct sockaddr_in server_address;
-    server_address.sin_port = htons(PORT);
-    server_address.sin_family = AF_INET;
-    if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) < 0)
+    FileRequestResponse response;
+    response.clients = readVector(socket_id);
+    int ports[] = {2012, 2014};
+    vector<thread> recieve_threads;
+    printf("%d", htons(response.clients[0].sin_port));
+    // printf("%d\n", response.clients.size());
+    for (int i = 0; i < response.clients.size(); i++)
     {
-        printf("PTON ERRRO\n");
-    };
+        recieve_threads.push_back(std::thread(recieve_section, response.clients[i], std::ref(recieved)));
+        // recieve_threads.push_back(recieve);
+    }
 
-    int socket_id;
+    for (int i = 0; i < recieve_threads.size(); i++)
+    {
+        recieve_threads[i].join();
+    }
+
+    reconstruct_from_sections(recieved, recieved.size());
+}
+
+void choiceLoop(struct sockaddr_in server_address, int id, int port)
+{
+    int socket_id = -1;
     while (1)
     {
 
@@ -198,7 +181,6 @@ int main()
 
         case 1:
         {
-
             int file_id;
             scanf("%d", &file_id);
             sendFileInfo(socket_id, id, file_id);
@@ -208,42 +190,8 @@ int main()
 
         case 2:
         {
-
-            vector<file_section> recieved;
-
-            FileRequest request;
-            request.user_id = id;
-            request.file_id = 1;
-            int w = write(socket_id, &request, sizeof(request));
-
-            FileRequestResponse response;
-            response.clients = readVector(socket_id);
-            int ports[] = {2012, 2014};
-            vector<thread> recieve_threads;
-            printf("%d", htons(response.clients[0].sin_port));
-            // printf("%d\n", response.clients.size());
-            for (int i = 0; i < response.clients.size(); i++)
-            {
-                recieve_threads.push_back(std::thread(recieve_section, response.clients[i], std::ref(recieved)));
-                // recieve_threads.push_back(recieve);
-            }
-
-            for (int i = 0; i < recieve_threads.size(); i++)
-            {
-                recieve_threads[i].join();
-            }
-
-            reconstruct_from_sections(recieved, recieved.size());
-
-            // read(socket_id, &response, sizeof(response));
-            // printf("%d\n", response.clients.size());
-            // for (int i = 0; i < response.clients.size(); i++)
-            // {
-            //     // get stuff
-            // }
-
+            requestForFile(socket_id, id);
             break;
-
             //synchronization?
 
             //also informs about the pieces it needs.
@@ -253,11 +201,49 @@ int main()
         }
         }
     }
+}
+//start background thread
+
+int main(int argc, char *argv[])
+{
+
+    // printf("%d\n", socket_id);
+
+    int port;
+    int id;
+    struct sockaddr_in server_address;
+
+    
+    if (argc == 3)
+    {
+        port = atoi(argv[1]);
+        id = atoi(argv[2]);
+    }
+
+    else
+    {
+        scanf("%d", &port);
+        scanf("%d", &id);
+    }
+
+    printf("%d\n", port);
+
+    std::thread background(background_listen, port); //what sort of call is this?
+
+    server_address.sin_port = htons(PORT);
+    server_address.sin_family = AF_INET;
+    if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) < 0)
+    {
+        printf("PTON ERRRO\n");
+    };
+    choiceLoop(server_address, id, port);
 
     //1. Should tell server about files it has
     //2. Should serve the section it is asked to server
     //3. Should request the server for the file
 
     //1. Should tell about number of pieces, and the  pieces it has
+
+    //Add GUI later
     //need checks for writing
 }

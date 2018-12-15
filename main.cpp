@@ -78,3 +78,5 @@ int findNumberOfPieces(FILE* fp)
 
 //     //is it being advanced?
 // }
+
+//fix  copying error
