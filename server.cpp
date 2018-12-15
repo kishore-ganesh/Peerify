@@ -8,7 +8,7 @@ bool findInVector(int id, vector<int> A)
 {
     for (int i = 0; i < A.size(); i++)
     {
-        if (A[i] == id)
+        if (A[i]==id)
         {
             return true;
         }
@@ -32,10 +32,18 @@ void sendVector(vector<T> A, int sock){
 }
 
 
-map<int, User> users;
+map<char*, User> users;
+
+void readID(int client_socket, char** ID)
+{
+    *ID = (char* )malloc(ID_SIZE);
+    read(client_socket, *ID, ID_SIZE);
+}
 
 // vector<User *>
 //     users;
+
+//Should client generate ID or should server generate the ID
 
 int main()
 {
@@ -59,14 +67,16 @@ int main()
         {
         case 0:
         {
-            printf("ZERO\n");
+            printf("HANDSHAKE INITIATED\n");
             Handshake handshake;
             int r = read(client_socket, &handshake, sizeof(handshake));
             // printf("%d ", r);
             User user;
             user.address = client_address;
             user.address.sin_port=htons(handshake.port);
-            user.id = handshake.id;
+
+            readID(client_socket, &user.id);
+            
             users.insert(make_pair(user.id, user));
             
             //handshake
@@ -77,9 +87,10 @@ int main()
         //     users;
         case 1:
         {
-            printf("ONE\n");
+            printf("REGISTERING FILE INFO\n");
             FileInfo fileInfo;
             read(client_socket, &fileInfo, sizeof(fileInfo));
+            readID(client_socket, &fileInfo.user_id);
             users[fileInfo.user_id].files.push_back(fileInfo.file_id);
 
             //info about file
@@ -91,14 +102,16 @@ int main()
         {
             //requests file
 
-            printf("TWO\n");
+            printf("FILE REQUESTED\n");
             FileRequest fileRequest;
             read(client_socket, &fileRequest, sizeof(FileRequest));
+            readID(client_socket, &fileRequest.user_id);
             printf("%d\n", fileRequest.user_id);
             //use boost serialization
             FileRequestResponse response;
             for (auto i = users.begin(); i != users.end(); i++)
             {
+        
                 bool found = findInVector(fileRequest.file_id, i->second.files);
                 if (found)
                 {

@@ -7,30 +7,31 @@
 #include <netinet/in.h>
 #include<arpa/inet.h>
 #define PORT 2000
+#define ID_SIZE 128
 
 
 using namespace std;
 struct User
 {
-    int id;
+    char* id;
     vector<int> files;
     sockaddr_in address;
 };
 
 struct Handshake
 {
-    int id;
+    char* ID;
     int port;
 
 };
 
 struct FileInfo{
-    int user_id;
+    char* user_id;
     int file_id;
 };
 
 struct FileRequest{
-    int user_id;
+    char* user_id;
     int file_id;
 
 };

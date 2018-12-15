@@ -7,6 +7,7 @@
 #include <mutex>
 #include <functional>
 #include "networkops.h"
+#include "util.h"
 
 std::mutex mtx;
 //port default else override
@@ -102,31 +103,41 @@ void recieve_section(sockaddr_in address, vector<file_section> &sections)
     mtx.unlock();
 }
 
-int sendHandshake(int socket_id, int id, int port)
+
+int sendID(int socket_id, char* ID)
 {
-    Handshake handshake;
-    handshake.id = id;
-    handshake.port = port;
-    int written = write(socket_id, &handshake, sizeof(Handshake));
+    int written = write(socket_id, ID, strlen(ID));
     return written;
 }
 
-void sendFileInfo(int socket_id, int id, int file_id)
+
+
+int sendHandshake(int socket_id, char* ID, int port)
 {
-    FileInfo info;
-    info.user_id = id;
-    info.file_id = file_id;
-    write(socket_id, &info, sizeof(info));
+    Handshake handshake;
+    handshake.port = port;
+    int written = write(socket_id, &handshake, sizeof(Handshake));
+    written+=sendID(socket_id, ID);
+    return written;
 }
 
-void requestForFile(int socket_id, int id)
+void sendFileInfo(int socket_id, char* ID, int file_id)
+{
+    FileInfo info;
+    info.file_id = file_id;
+    write(socket_id, &info, sizeof(info));
+    sendID(socket_id, ID);
+}
+
+void requestForFile(int socket_id, char* id)
 {
     vector<file_section> recieved;
 
     FileRequest request;
-    request.user_id = id;
     request.file_id = 1;
     int w = write(socket_id, &request, sizeof(request));
+
+    sendID(socket_id, id);
 
     FileRequestResponse response;
     response.clients = readVector(socket_id);
@@ -148,7 +159,7 @@ void requestForFile(int socket_id, int id)
     reconstruct_from_sections(recieved, recieved.size());
 }
 
-void choiceLoop(struct sockaddr_in server_address, int id, int port)
+void choiceLoop(struct sockaddr_in server_address, char* id, int port)
 {
     int socket_id = -1;
     while (1)
@@ -203,27 +214,31 @@ void choiceLoop(struct sockaddr_in server_address, int id, int port)
     }
 }
 //start background thread
-
+//generate IDs automatically
+//Ask for IP from user
 int main(int argc, char *argv[])
 {
 
     // printf("%d\n", socket_id);
 
     int port;
-    int id;
+
+    char  ID[128];
+
+    generateUniqueID(ID, 128);
+    
     struct sockaddr_in server_address;
 
     
     if (argc == 3)
     {
         port = atoi(argv[1]);
-        id = atoi(argv[2]);
     }
 
     else
     {
         scanf("%d", &port);
-        scanf("%d", &id);
+       
     }
 
     printf("%d\n", port);
@@ -236,7 +251,7 @@ int main(int argc, char *argv[])
     {
         printf("PTON ERRRO\n");
     };
-    choiceLoop(server_address, id, port);
+    choiceLoop(server_address, ID, port);
 
     //1. Should tell server about files it has
     //2. Should serve the section it is asked to server
