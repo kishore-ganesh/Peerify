@@ -3,18 +3,19 @@
 #include <stdio.h>
 #include <math.h>
 #include<vector>
+#include<cstdint>
 using namespace std;
 struct file_header
 {
 
-    int position_in_file;
+    int32_t  position_in_file;
 };
 
 struct file_section
 {
     struct file_header header;
     char *databuf;
-    size_t size_of_databuf;
+    uint32_t size_of_databuf;
 };
 
 size_t findSizeOfFile(FILE *fp);

@@ -4,6 +4,7 @@
 #include "networkstructures.h"
 #include "networkops.h"
 
+
 bool findInVector(int id, vector<int> A)
 {
     for (int i = 0; i < A.size(); i++)
@@ -58,7 +59,7 @@ int main()
         }
         int mid;
         
-        int r = read(client_socket, &mid, sizeof(int));
+        int32_t r = read(client_socket, &mid, sizeof(r));
         printf("%d\n", mid);
         switch (mid)
         {
@@ -66,14 +67,14 @@ int main()
         {
             printf("HANDSHAKE INITIATED\n");
             Handshake handshake;
-            int r = read(client_socket, &handshake, sizeof(handshake));
+            int r = read(client_socket, &handshake.port, sizeof(handshake.port));
             // printf("%d ", r);
             User user;
             user.address = client_address;
             user.address.sin_port=htons(handshake.port);
 
             readID(client_socket, &user.id);
-            
+            printf("%s\n", user.id);
             users.insert(make_pair(user.id, user));
             
             //handshake
@@ -86,9 +87,11 @@ int main()
         {
             printf("REGISTERING FILE INFO\n");
             FileInfo fileInfo;
-            read(client_socket, &fileInfo, sizeof(fileInfo));
+            read(client_socket, &fileInfo.file_id, sizeof(fileInfo.file_id));
             readID(client_socket, &fileInfo.user_id);
+            printf("%s\n", fileInfo.user_id);
             users[fileInfo.user_id].files.push_back(fileInfo.file_id);
+
 
             //info about file
 
@@ -101,14 +104,14 @@ int main()
 
             printf("FILE REQUESTED\n");
             FileRequest fileRequest;
-            read(client_socket, &fileRequest, sizeof(FileRequest));
+            read(client_socket, &fileRequest.file_id, sizeof(fileRequest.file_id));
             readID(client_socket, &fileRequest.user_id);
-            printf("%d\n", fileRequest.user_id);
+            printf("FILE ID is: %d\n", fileRequest.file_id);
             //use boost serialization
             FileRequestResponse response;
             for (auto i = users.begin(); i != users.end(); i++)
             {
-        
+                printf("%s %d\n", i->first.c_str(), i->second.files.size()); 
                 bool found = findInVector(fileRequest.file_id, i->second.files);
                 if (found)
                 {
