@@ -12,6 +12,19 @@
 std::mutex mtx;
 //port default else override
 
+void writeSection(int client_socket, file_section section){
+    write(client_socket, &section.header, sizeof(file_header));
+    write(client_socket, &section.size_of_databuf, sizeof(section.size_of_databuf)); 
+    write(client_socket, section.databuf, section.size_of_databuf);
+}
+
+file_section* readSection(int socket){
+    file_section* t = (file_section*)malloc(sizeof(file_section));
+    read(socket, &t->header, sizeof(t->header));
+    read(socket, &t->size_of_databuf, sizeof(t->size_of_databuf));
+    t->databuf = (char*) malloc(t->size_of_databuf);
+    read(socket, t->databuf, t->size_of_databuf);
+}
 
 void listenLoop(int socket_id, int port)
 {
@@ -33,23 +46,20 @@ void listenLoop(int socket_id, int port)
         if (port == 2012)
         {
 
-            int toWrite = numberOfPieces / 2;
-            write(client_socket, &toWrite, sizeof(int));
-            for (int i = 0; i < numberOfPieces / 2; i++)
-            {
-
-                write(client_socket, &sections[i], sizeof(sections[i]));
-                write(client_socket, sections[i].databuf, sections[i].size_of_databuf);
+            int32_t toWrite = numberOfPieces / 2;
+            write(client_socket, &toWrite, sizeof(toWrite));
+            for (int i = 0; i < numberOfPieces / 2; i++){
+                writeSection(client_socket, sections[i]);
             }
         }
         else
         {
-            int toWrite = numberOfPieces - numberOfPieces / 2;
-            write(client_socket, &toWrite, sizeof(int));
+            int32_t toWrite = numberOfPieces - numberOfPieces / 2;
+            write(client_socket, &toWrite, sizeof(toWrite));
             for (int i = numberOfPieces / 2; i < numberOfPieces; i++)
             {
-                write(client_socket, &sections[i], sizeof(sections[i]));
-                write(client_socket, sections[i].databuf, sections[i].size_of_databuf);
+
+                writeSection(client_socket,sections[i]);
             }
         }
     }
@@ -89,15 +99,16 @@ void recieve_section(sockaddr_in address, vector<file_section> &sections)
     //for now make it 6
 
     //get number of pieces from the clients first
-    int numberOfPieces = 0;
-    read(socket_id, &numberOfPieces, sizeof(int));
+    int32_t numberOfPieces = 0;
+    read(socket_id, &numberOfPieces, sizeof(numberOfPieces));
     for (int i = 0; i < numberOfPieces; i++)
     {
+       //Change
         file_section section;
-        read(socket_id, &section, sizeof(section));
         section.databuf = (char *)malloc(section.size_of_databuf);
         read(socket_id, section.databuf, section.size_of_databuf);
         sections.push_back(section);
+        section = *(readSection(socket_id));
     }
 
     mtx.unlock();
@@ -112,30 +123,24 @@ int sendID(int socket_id, char* ID)
 
 
 
-int sendHandshake(int socket_id, char* ID, int port)
+int sendHandshake(int socket_id, char* ID, int32_t port)
 {
-    Handshake handshake;
-    handshake.port = port;
-    int written = write(socket_id, &handshake, sizeof(Handshake));
+    int written = write(socket_id, &port, sizeof(port));
     written+=sendID(socket_id, ID);
     return written;
 }
 
-void sendFileInfo(int socket_id, char* ID, int file_id)
+void sendFileInfo(int socket_id, char* ID, int32_t file_id)
 {
-    FileInfo info;
-    info.file_id = file_id;
-    write(socket_id, &info, sizeof(info));
+    write(socket_id, &file_id, sizeof(file_id));
     sendID(socket_id, ID);
 }
 
 void requestForFile(int socket_id, char* id)
 {
     vector<file_section> recieved;
-
-    FileRequest request;
-    request.file_id = 1;
-    int w = write(socket_id, &request, sizeof(request));
+    int32_t file_id = 1;
+    int w = write(socket_id, &file_id, sizeof(file_id));
 
     sendID(socket_id, id);
 
@@ -159,7 +164,7 @@ void requestForFile(int socket_id, char* id)
     reconstruct_from_sections(recieved, recieved.size());
 }
 
-void choiceLoop(struct sockaddr_in server_address, char* id, int port)
+void choiceLoop(struct sockaddr_in server_address, char* id, int32_t port)
 {
     int socket_id = -1;
     while (1)
@@ -221,7 +226,7 @@ int main(int argc, char *argv[])
 
     // printf("%d\n", socket_id);
 
-    int port;
+    int32_t port;
 
     char  ID[128];
 

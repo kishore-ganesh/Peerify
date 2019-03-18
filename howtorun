@@ -1,0 +1,8 @@
+For the preliminary beta, here are the basic insturctions:
+
+One client should have port 2012
+One should have port 2018
+Both of them should have file ID 1
+One should ask for file
+
+
