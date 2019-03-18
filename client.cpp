@@ -225,6 +225,7 @@ int main(int argc, char *argv[])
 
     char  ID[128];
 
+    char* IP = "127.0.0.1";
     generateUniqueID(ID, 128);
     
     struct sockaddr_in server_address;
@@ -233,6 +234,7 @@ int main(int argc, char *argv[])
     if (argc == 3)
     {
         port = atoi(argv[1]);
+        IP = argv[2];
     }
 
     else
@@ -247,7 +249,7 @@ int main(int argc, char *argv[])
 
     server_address.sin_port = htons(PORT);
     server_address.sin_family = AF_INET;
-    if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) < 0)
+    if (inet_pton(AF_INET, IP, &server_address.sin_addr) < 0)
     {
         printf("PTON ERRRO\n");
     };
