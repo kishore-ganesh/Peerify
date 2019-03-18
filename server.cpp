@@ -18,9 +18,6 @@ bool findInVector(int id, vector<int> A)
 }
 
 
-
-
-
 template<typename T>
 void sendVector(vector<T> A, int sock){
     //make htis more generic later
@@ -32,7 +29,7 @@ void sendVector(vector<T> A, int sock){
 }
 
 
-map<char*, User> users;
+map<string, User> users;
 
 void readID(int client_socket, char** ID)
 {

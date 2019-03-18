@@ -29,7 +29,6 @@ for(int i=0; i<size; i++)
 {
     
     int poolIndex = rand()%(61);
-    printf("%d\n", poolIndex); 
     ID[i]=pool[poolIndex];
 }
 
